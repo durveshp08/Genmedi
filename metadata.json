@@ -1,0 +1,6 @@
+{
+  "name": "Genmedi",
+  "description": "Generic medicine discovery, clinical bioequivalence comparison, prescription triage, and 45-minute fast-delivery operations platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
