@@ -24,6 +24,10 @@ import type {
   UserAddress,
 } from "../types/auth";
 
+// ─── API Configuration ───────────────────────────────────────
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 // ─── Token Helpers ──────────────────────────────────────────
 
 const TOKEN_KEY = "genmedi_access_token";
@@ -160,7 +164,7 @@ async function fetchJSON<T>(
     }
   }
 
-  const response = await fetch(fullUrl, {
+  const response = await fetch(`${API_URL}${fullUrl}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -179,7 +183,7 @@ async function fetchJSON<T>(
         if (body) retryHeaders["Content-Type"] = "application/json";
         retryHeaders["Authorization"] = `Bearer ${newToken}`;
 
-        const retryResponse = await fetch(fullUrl, {
+        const retryResponse = await fetch(`${API_URL}${fullUrl}`, {
           method,
           headers: retryHeaders,
           body: body ? JSON.stringify(body) : undefined,
@@ -223,7 +227,7 @@ async function attemptRefresh(): Promise<string | null> {
   isRefreshing = true;
 
   try {
-    const res = await fetch("/api/auth/refresh", {
+    const res = await fetch(`${API_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),

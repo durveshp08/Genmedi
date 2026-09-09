@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  app:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,6 +9,8 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
       - DATABASE_URL=mongodb://mongo:27017/genmedi
       - JWT_SECRET=${JWT_SECRET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
