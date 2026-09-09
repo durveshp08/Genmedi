@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket } from "ws";
-import { prisma } from "../db";
 
 interface RiderLocation {
   orderId: string;

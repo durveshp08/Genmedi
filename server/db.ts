@@ -1,17 +1,21 @@
-import { PrismaClient } from "@prisma/client";
+import mongoose from "mongoose";
 
-// Singleton pattern to prevent multiple Prisma Client instances
-// during development with hot-module reloading.
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+const DATABASE_URL = process.env.DATABASE_URL || "mongodb://localhost:27017/genmedi";
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+// Connect to MongoDB
+mongoose
+  .connect(DATABASE_URL)
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1);
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Log disconnection events
+mongoose.connection.on("disconnected", () => {
+  console.warn("⚠️ MongoDB disconnected");
+});
+
+export { mongoose };

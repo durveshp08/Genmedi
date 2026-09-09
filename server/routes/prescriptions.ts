@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db";
+import { Prescription } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
 import {
@@ -12,11 +12,11 @@ import crypto from "crypto";
 export const prescriptionsRouter = Router();
 
 /**
- * Converts a Prisma prescription (with items) to the frontend Prescription type.
+ * Converts a Mongoose prescription to the frontend Prescription type.
  */
 function toPrescriptionResponse(rx: any) {
   return {
-    id: rx.id,
+    id: rx._id,
     doctorName: rx.doctorName,
     doctorRegNo: rx.doctorRegNo,
     doctorClinic: rx.doctorClinic,
@@ -36,7 +36,7 @@ function toPrescriptionResponse(rx: any) {
         }
       : undefined,
     items: (rx.items || []).map((item: any) => ({
-      id: item.id,
+      id: item._id,
       brandName: item.brandName,
       molecule: item.molecule,
       dosage: item.dosage,
@@ -59,10 +59,9 @@ function toPrescriptionResponse(rx: any) {
 prescriptionsRouter.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const prescriptions = await prisma.prescription.findMany({
-      include: { items: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const prescriptions = await Prescription.find()
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       data: prescriptions.map(toPrescriptionResponse),
@@ -81,10 +80,7 @@ prescriptionsRouter.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const rx = await prisma.prescription.findUnique({
-      where: { id },
-      include: { items: true },
-    });
+    const rx = await Prescription.findById(id).lean();
 
     if (!rx) {
       throw new ApiError(404, `Prescription with ID "${id}" not found`);
@@ -104,18 +100,13 @@ prescriptionsRouter.post(
   asyncHandler(async (req, res) => {
     const { items, ...rxData } = req.body;
 
-    const rx = await prisma.prescription.create({
-      data: {
-        ...rxData,
-        status: "pending_review",
-        items: {
-          create: items,
-        },
-      },
-      include: { items: true },
+    const rx = await Prescription.create({
+      ...rxData,
+      status: "pending_review",
+      items: items || [],
     });
 
-    res.status(201).json(toPrescriptionResponse(rx));
+    res.status(201).json(toPrescriptionResponse(rx.toObject()));
   })
 );
 
@@ -131,7 +122,7 @@ prescriptionsRouter.patch(
     const { id } = req.params;
     const { pharmacistName, pharmacistRegNo } = req.body;
 
-    const existing = await prisma.prescription.findUnique({ where: { id } });
+    const existing = await Prescription.findById(id);
     if (!existing) {
       throw new ApiError(404, `Prescription with ID "${id}" not found`);
     }
@@ -140,17 +131,17 @@ prescriptionsRouter.patch(
     const hashInput = `${id}:${pharmacistName}:${pharmacistRegNo}:${timestamp}`;
     const sha256Hash = crypto.createHash("sha256").update(hashInput).digest("hex");
 
-    const rx = await prisma.prescription.update({
-      where: { id },
-      data: {
+    const rx = await Prescription.findByIdAndUpdate(
+      id,
+      {
         status: "verified",
         pharmacistName,
         pharmacistRegNo,
         pharmacistTimestamp: timestamp,
         pharmacistHash: sha256Hash,
       },
-      include: { items: true },
-    });
+      { new: true }
+    ).lean();
 
     res.json(toPrescriptionResponse(rx));
   })

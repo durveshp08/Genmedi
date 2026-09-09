@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db";
+import { StockistHub } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 
 export const hubsRouter = Router();
@@ -11,9 +11,7 @@ export const hubsRouter = Router();
 hubsRouter.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const hubs = await prisma.stockistHub.findMany({
-      orderBy: { distanceKm: "asc" },
-    });
+    const hubs = await StockistHub.find().sort({ distanceKm: 1 }).lean();
 
     res.json({ data: hubs, total: hubs.length });
   })
@@ -28,7 +26,7 @@ hubsRouter.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const hub = await prisma.stockistHub.findUnique({ where: { id } });
+    const hub = await StockistHub.findById(id).lean();
 
     if (!hub) {
       throw new ApiError(404, `Stockist hub with ID "${id}" not found`);
