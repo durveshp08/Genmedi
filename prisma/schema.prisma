@@ -1,0 +1,275 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────
+// Medicine — Brand vs. Generic comparison data
+// ─────────────────────────────────────────────
+model Medicine {
+  id                     String   @id @default(cuid())
+  brandName              String
+  brandManufacturer      String
+  brandPrice             Float
+  genericName            String
+  genericManufacturer    String
+  genericPrice           Float
+  dosage                 String
+  therapeuticClass       String
+  indication             String
+  bioIndex               Float
+  savingsPercent         Float
+  inStock                Boolean  @default(true)
+  whoGmpCertified        Boolean  @default(true)
+  nablAudited            Boolean  @default(true)
+  cdscoApproved          Boolean  @default(true)
+  dissolutionTimeMinutes Float
+  aucRatio               Float
+  cmaxRatio              Float
+  allergenFlags          String?  // JSON array stored as string for SQLite
+
+  // Relations
+  cartItems        CartItem[]
+  dissolutionData  DissolutionData[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// StockistHub — Pharmacy hub / stockist data
+// ─────────────────────────────────────────────
+model StockistHub {
+  id                    String  @id @default(cuid())
+  name                  String
+  address               String
+  distanceKm            Float
+  fastDeliveryAvailable Boolean @default(false)
+  estimatedDeliveryMins Int
+  inStockQuantity       Int
+  rating                Float
+  verifiedByCdsco       Boolean @default(true)
+  pricePerStrip         Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Prescription — Full Rx with doctor & patient
+// ─────────────────────────────────────────────
+model Prescription {
+  id              String @id @default(cuid())
+  doctorName      String
+  doctorRegNo     String
+  doctorClinic    String
+  patientName     String
+  patientAge      Int
+  patientGender   String
+  patientAbhaId   String
+  date            String
+  diagnosis       String
+  status          String @default("pending_review") // "verified" | "pending_review" | "rejected"
+
+  // Pharmacist signature fields (nullable until signed)
+  pharmacistName      String?
+  pharmacistRegNo     String?
+  pharmacistTimestamp String?
+  pharmacistHash      String?
+
+  // Relations
+  items  PrescriptionItem[]
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// PrescriptionItem — Single medicine line item
+// ─────────────────────────────────────────────
+model PrescriptionItem {
+  id               String  @id @default(cuid())
+  brandName        String
+  molecule         String
+  dosage           String
+  frequency        String
+  duration         String
+  brandPrice       Float
+  genericPrice     Float
+  genericSubstitute String
+  savingsPercent   Float
+  bioIndex         Float
+  allergyFlag      Boolean @default(false)
+
+  // Relations
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  prescriptionId String
+
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Order — Order with tracking data
+// ─────────────────────────────────────────────
+model Order {
+  id                    String @id @default(cuid())
+  status                String @default("order_placed") // order_placed | rx_verified | hub_dispensed | rider_picked | in_transit | delivered
+  etaMinutes            Int
+  riderName             String
+  riderPhone            String
+  riderRating           Float
+  vehicle               String
+  currentSpeedKmh       Float    @default(0)
+  boxTemperatureCelsius Float    @default(4.0)
+  handoverOtp           String
+  hubName               String
+  hubAddress            String
+  customerAddress       String
+  tamperSealBarcode     String
+  stages                String   // JSON array of stage objects for SQLite
+
+  // Relations
+  prescription   Prescription? @relation(fields: [prescriptionId], references: [id])
+  prescriptionId String?
+  exceptions     PriorityException[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// CartItem — Shopping cart entry
+// ─────────────────────────────────────────────
+model CartItem {
+  id        String  @id @default(cuid())
+  quantity  Int     @default(1)
+  isGeneric Boolean @default(true)
+  sessionId String  // Temporary session ID until auth is added
+
+  // Relations
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+  medicineId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, medicineId, isGeneric])
+}
+
+// ─────────────────────────────────────────────
+// PriorityException — Operational exception
+// ─────────────────────────────────────────────
+model PriorityException {
+  id              String @id @default(cuid())
+  type            String // "cold_chain_breach" | "courier_breakdown" | "rx_illegible" | "out_of_stock"
+  severity        String // "critical" | "high" | "medium"
+  description     String
+  slaRemainingMins Int
+  riderName       String?
+  status          String @default("active") // "active" | "resolving" | "resolved"
+  timestamp       String
+
+  // Relations
+  order   Order  @relation(fields: [orderId], references: [id])
+  orderId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// DissolutionData — Dissolution curve time series
+// ─────────────────────────────────────────────
+model DissolutionData {
+  id               String @id @default(cuid())
+  timeMinutes      Int
+  innovatorRelease Float
+  genericRelease   Float
+  toleranceLower   Float
+  toleranceUpper   Float
+
+  // Relations
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  medicineId String
+
+  @@unique([medicineId, timeMinutes])
+}
+
+// ─────────────────────────────────────────────
+// User — Authenticated user account
+// ─────────────────────────────────────────────
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?  @unique
+  passwordHash  String
+  role          String   @default("patient") // patient | pharmacist | admin | rider
+  age           Int?
+  gender        String?
+  abhaId        String?  @unique            // Ayushman Bharat Health Account
+  avatarUrl     String?
+
+  // Pharmacist-specific fields
+  pharmacistRegNo    String?  @unique
+  pharmacistLicense  String?
+  pharmacistVerified Boolean  @default(false)
+
+  // Relations
+  sessions    Session[]
+  allergies   UserAllergy[]
+  addresses   UserAddress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Session — JWT token session tracking
+// ─────────────────────────────────────────────
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// UserAllergy — Patient allergy profile
+// ─────────────────────────────────────────────
+model UserAllergy {
+  id       String @id @default(cuid())
+  allergen String
+  severity String // mild | moderate | severe
+  notes    String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, allergen])
+}
+
+// ─────────────────────────────────────────────
+// UserAddress — Delivery addresses
+// ─────────────────────────────────────────────
+model UserAddress {
+  id        String  @id @default(cuid())
+  label     String
+  address   String
+  city      String
+  pincode   String
+  isDefault Boolean @default(false)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+}
+

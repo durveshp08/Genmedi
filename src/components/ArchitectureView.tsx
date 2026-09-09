@@ -11,7 +11,14 @@ import {
   Activity, 
   Lock,
   Building2,
-  Stethoscope
+  Stethoscope,
+  Globe,
+  Bell,
+  Truck,
+  DollarSign,
+  BarChart3,
+  FileText,
+  CheckCircle2
 } from "lucide-react";
 
 export const ArchitectureView: React.FC = () => {
@@ -28,135 +35,172 @@ export const ArchitectureView: React.FC = () => {
               ENTERPRISE PLATFORM SPECIFICATION
             </span>
           </div>
-          <h2 className="text-lg font-bold mt-1">High-Level System Architecture Blueprint</h2>
+          <h2 className="text-lg font-bold mt-1">Complete System Architecture Blueprint</h2>
           <p className="text-xs text-white/70">
-            End-to-end topology from consumer client channels to CDSCO regulatory audit ledgers.
+            End-to-end topology covering all implemented phases: Auth, Operations, Intelligence, Compliance & Launch
           </p>
         </div>
 
         <div className="text-xs font-mono bg-white/10 px-3.5 py-2 rounded-xl text-[#86f2e4]">
-          Cloud Run • 45-Min SLA Broker
+          v1.0 • All Phases Complete
         </div>
       </div>
 
-      {/* Layer 1: Client Channels & User Roles */}
+      {/* Phase 3: Auth & User System */}
       <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-3">
         <div className="flex items-center gap-2 text-xs font-bold text-[#0b1c30]">
-          <Smartphone className="w-4 h-4 text-[#006a61]" />
-          <span>Layer 1: User Interfaces &amp; Edge Channels</span>
+          <ShieldCheck className="w-4 h-4 text-[#006a61]" />
+          <span>Phase 3: Authentication & User Management System</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#dce9ff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Consumer App</div>
-            <p className="text-[11px] text-[#45464d]">Search, Parity Matrix, 45-min checkout, live GPS</p>
+            <div className="font-bold text-[#0b1c30]">JWT Authentication</div>
+            <p className="text-[11px] text-[#45464d]">Access tokens (15min), refresh tokens (7 days), OTP verification</p>
           </div>
           <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#dce9ff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Reviewer Console</div>
-            <p className="text-[11px] text-[#45464d]">Dual-pane OCR, DDI flags, PKI SHA-256 sign-off</p>
+            <div className="font-bold text-[#0b1c30]">Role-Based Access Control</div>
+            <p className="text-[11px] text-[#45464d]">Patient, Pharmacist, Admin, Rider roles with tab permissions</p>
           </div>
           <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#dce9ff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Hub Fulfillment</div>
-            <p className="text-[11px] text-[#45464d]">Apollo Hub #048 packing, OTP courier handshake</p>
+            <div className="font-bold text-[#0b1c30]">Patient Health Vault</div>
+            <p className="text-[11px] text-[#45464d]">Allergies, medication history, addresses, ABHA ID</p>
           </div>
           <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#dce9ff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Rider Fleet App</div>
-            <p className="text-[11px] text-[#45464d]">GPS telemetry, thermal sensor broadcast, customer OTP</p>
-          </div>
-          <div className="p-3 rounded-xl bg-[#eff4ff] border border-[#dce9ff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Operations Tower</div>
-            <p className="text-[11px] text-[#45464d]">Incident dispatch, cold-chain alarms, SLA monitor</p>
+            <div className="font-bold text-[#0b1c30]">Pharmacist Portal</div>
+            <p className="text-[11px] text-[#45464d]">Verification, queue management, digital signature</p>
           </div>
         </div>
       </div>
 
-      {/* Layer 2: Edge Gateway & Security */}
-      <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-3">
-        <div className="flex items-center gap-2 text-xs font-bold text-[#0b1c30]">
-          <Lock className="w-4 h-4 text-[#006a61]" />
-          <span>Layer 2: Edge Routing &amp; Regulatory Gateway</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">ABHA / NDHM Token Exchange</div>
-            <p className="text-[11px] text-[#45464d]">Authenticates Ayushman Bharat Health Accounts with consent artifacts</p>
-          </div>
-          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">CDSCO Schedule H1 Firewall</div>
-            <p className="text-[11px] text-[#45464d]">Validates doctor registration numbers before cart progression</p>
-          </div>
-          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
-            <div className="font-bold text-[#0b1c30]">Cloud Armor &amp; Rate Limiter</div>
-            <p className="text-[11px] text-[#45464d]">Protects against scraping of pharmaceutical arbitrage margins</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Layer 3: Microservices Core */}
+      {/* Phase 4: Operations & Delivery */}
       <div className="bg-white rounded-2xl border-2 border-[#006a61] p-5 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-[#006a61]">
-            <Server className="w-4 h-4" />
-            <span>Layer 3: Core Microservices (Express &amp; Cloud Run Engine)</span>
+            <Activity className="w-4 h-4" />
+            <span>Phase 4: Operations & Real-Time Delivery System</span>
           </div>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#86f2e4] text-[#00201d] font-bold">
-            HIGH AVAILABILITY
+            45-MIN SLA
           </span>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-          <div className="p-3.5 rounded-xl bg-[#eff4ff] space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-[#eff4ff] space-y-1">
             <div className="font-bold text-[#006a61] flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5" /> Bioequivalence Engine
+              <DollarSign className="w-3.5 h-3.5" /> Razorpay Integration
             </div>
-            <p className="text-[11px] text-[#45464d]">
-              Computes in-vitro f2 similarity curves, AUC 80–125% compliance, and price arbitrage.
-            </p>
+            <p className="text-[11px] text-[#45464d]">Order creation, payment verification, refunds, pricing engine</p>
           </div>
-
-          <div className="p-3.5 rounded-xl bg-[#eff4ff] space-y-1">
+          <div className="p-3 rounded-xl bg-[#eff4ff] space-y-1">
             <div className="font-bold text-[#006a61] flex items-center gap-1.5">
-              <Bot className="w-3.5 h-3.5" /> Gemini Clinical AI Service
+              <Truck className="w-3.5 h-3.5" /> Real-Time Tracking
             </div>
-            <p className="text-[11px] text-[#45464d]">
-              Provides pharmacist decision support, drug interaction checks, and allergy warnings via Gemini 3.8 Flash.
-            </p>
+            <p className="text-[11px] text-[#45464d]">WebSocket server, rider GPS telemetry, live map updates</p>
           </div>
-
-          <div className="p-3.5 rounded-xl bg-[#eff4ff] space-y-1">
+          <div className="p-3 rounded-xl bg-[#eff4ff] space-y-1">
             <div className="font-bold text-[#006a61] flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5" /> 45-Min Fast SLA Dispatch Broker
+              <Bell className="w-3.5 h-3.5" /> Notification Center
             </div>
-            <p className="text-[11px] text-[#45464d]">
-              Geospatial allocation matching order location to Apollo Hub #048 with rider backup logic.
-            </p>
+            <p className="text-[11px] text-[#45464d]">In-app notifications, FCM ready, order/delivery alerts</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#eff4ff] space-y-1">
+            <div className="font-bold text-[#006a61] flex items-center gap-1.5">
+              <Server className="w-3.5 h-3.5" /> Rider Management
+            </div>
+            <p className="text-[11px] text-[#45464d]">Fleet dashboard, assignment system, status tracking</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#eff4ff] space-y-1">
+            <div className="font-bold text-[#006a61] flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Order Lifecycle
+            </div>
+            <p className="text-[11px] text-[#45464d]">State machine with 17 statuses, role-based transitions</p>
           </div>
         </div>
       </div>
 
-      {/* Layer 4: Storage & External Regulators */}
+      {/* Phase 5: Intelligence & Scale */}
+      <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-[#0b1c30]">
+          <Bot className="w-4 h-4 text-[#006a61]" />
+          <span>Phase 5: Intelligence, Scale & Analytics</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
+            <div className="font-bold text-[#0b1c30]">Drug-Drug Interactions</div>
+            <p className="text-[11px] text-[#45464d]">Severity levels (contraindicated to minor), clinical evidence</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
+            <div className="font-bold text-[#0b1c30]">Multi-Language (i18n)</div>
+            <p className="text-[11px] text-[#45464d]">Hindi, Kannada, Tamil translations with language switcher</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
+            <div className="font-bold text-[#0b1c30]">Doctor E-Prescribing</div>
+            <p className="text-[11px] text-[#45464d]">MCI verification, digital prescriptions, pharmacy integration</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
+            <div className="font-bold text-[#0b1c30]">PWA Support</div>
+            <p className="text-[11px] text-[#45464d]">Service worker, offline support, installable app</p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] space-y-1">
+            <div className="font-bold text-[#0b1c30]">Admin Analytics</div>
+            <p className="text-[11px] text-[#45464d]">Real-time metrics, performance tracking, activity logs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Phase 6: Compliance & Launch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
         <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-3">
           <div className="flex items-center gap-2 font-bold text-[#0b1c30]">
-            <Database className="w-4 h-4 text-[#006a61]" />
-            <span>Layer 4: Data &amp; Persistence Storage</span>
+            <ShieldCheck className="w-4 h-4 text-[#006a61]" />
+            <span>Phase 6: Regulatory Compliance & Security</span>
           </div>
           <ul className="space-y-1.5 text-[#45464d]">
-            <li>• <strong>PostgreSQL Catalog</strong>: 1,842 CDSCO approved bioequivalent molecules.</li>
-            <li>• <strong>AES-256 Rx Vault</strong>: Encrypted medical scripts and patient health records.</li>
-            <li>• <strong>Immutable Audit Ledger</strong>: PKI SHA-256 signatures for Schedule H1 drugs.</li>
+            <li>• <strong>DISHA Compliance</strong>: Healthcare data access/modification logging</li>
+            <li>• <strong>CDSCO Integration</strong>: Schedule H1 drug tracking, cold-chain monitoring</li>
+            <li>• <strong>ABHA Integration</strong>: Health ID linkage, consent management</li>
+            <li>• <strong>Security Hardening</strong>: OWASP audit, audit logging middleware</li>
+            <li>• <strong>Performance</strong>: Code splitting, caching, CDN optimization</li>
           </ul>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-3">
           <div className="flex items-center gap-2 font-bold text-[#0b1c30]">
-            <Building2 className="w-4 h-4 text-[#006a61]" />
-            <span>Layer 5: External Ecosystem Integrations</span>
+            <Server className="w-4 h-4 text-[#006a61]" />
+            <span>Phase 6: Infrastructure & Launch</span>
           </div>
           <ul className="space-y-1.5 text-[#45464d]">
-            <li>• <strong>ABHA / Ayushman Bharat Digital Mission (ABDM)</strong> consent gateway.</li>
-            <li>• <strong>NABL Accredited Testing Laboratories</strong> automated batch CoA feed.</li>
-            <li>• <strong>Logistics Telemetry</strong>: BLE cold-chain thermal sensors (2–8°C).</li>
+            <li>• <strong>CI/CD Pipeline</strong>: GitHub Actions, automated testing, Docker builds</li>
+            <li>• <strong>Docker Containerization</strong>: Multi-stage builds, docker-compose setup</li>
+            <li>• <strong>Pre-Launch Checklist</strong>: Legal, technical, operational readiness</li>
+            <li>• <strong>Beta Launch Plan</strong>: 9-week timeline with success metrics</li>
+            <li>• <strong>Monitoring</strong>: Error tracking, log aggregation, health checks</li>
           </ul>
+        </div>
+      </div>
+
+      {/* Technology Stack Summary */}
+      <div className="bg-[#131b2e] text-white p-5 rounded-2xl shadow-md space-y-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-[#86f2e4]">
+          <Cpu className="w-4 h-4" />
+          <span>Technology Stack Summary</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div>
+            <div className="font-bold text-white mb-1">Frontend</div>
+            <div className="text-white/70">React 19, Vite, TailwindCSS, Motion, Lucide Icons</div>
+          </div>
+          <div>
+            <div className="font-bold text-white mb-1">Backend</div>
+            <div className="text-white/70">Express.js, TypeScript, Prisma ORM, JWT, WebSocket</div>
+          </div>
+          <div>
+            <div className="font-bold text-white mb-1">Database</div>
+            <div className="text-white/70">PostgreSQL, SQLite (dev), Redis (cache)</div>
+          </div>
+          <div>
+            <div className="font-bold text-white mb-1">Infrastructure</div>
+            <div className="text-white/70">Docker, GitHub Actions, Cloud Run, CDN</div>
+          </div>
         </div>
       </div>
     </div>

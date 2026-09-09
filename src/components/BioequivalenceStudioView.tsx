@@ -13,7 +13,6 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Medicine, DissolutionCurveData } from "../types";
-import { sampleDissolutionAssay } from "../data/mockData";
 
 interface BioequivalenceStudioViewProps {
   medicines: Medicine[];
