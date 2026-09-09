@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Zap, 
   MapPin, 
@@ -13,7 +13,9 @@ import {
   Barcode, 
   AlertCircle,
   Truck,
-  RotateCcw
+  RotateCcw,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import { OrderTracking } from "../types";
 
@@ -21,6 +23,16 @@ interface LiveTrackingViewProps {
   tracking: OrderTracking;
   onCallRider: () => void;
   onCallHub: () => void;
+}
+
+interface RiderLocation {
+  orderId: string;
+  lat: number;
+  lng: number;
+  speedKmh: number;
+  temperature: number;
+  etaMinutes: number;
+  timestamp: number;
 }
 
 export const LiveTrackingView: React.FC<LiveTrackingViewProps> = ({
@@ -32,15 +44,64 @@ export const LiveTrackingView: React.FC<LiveTrackingViewProps> = ({
   const [speed, setSpeed] = useState(tracking.currentSpeedKmh);
   const [temp, setTemp] = useState(tracking.boxTemperatureCelsius);
   const [riderProgress, setRiderProgress] = useState(55); // 0 to 100% on route
+  const [connected, setConnected] = useState(false);
+  const [riderLocation, setRiderLocation] = useState<RiderLocation | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Subtle real-time telemetry simulation
+  // WebSocket connection for real-time tracking
   useEffect(() => {
+    const wsUrl = `ws://localhost:8080?orderId=${tracking.orderId}`;
+    wsRef.current = new WebSocket(wsUrl);
+
+    wsRef.current.onopen = () => {
+      setConnected(true);
+      console.log("WebSocket connected for tracking");
+    };
+
+    wsRef.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "location_update") {
+          const location: RiderLocation = data.data;
+          setRiderLocation(location);
+          setEta(location.etaMinutes);
+          setSpeed(location.speedKmh);
+          setTemp(location.temperature);
+          // Update progress based on ETA
+          setRiderProgress(Math.max(5, 100 - (location.etaMinutes / 45) * 100));
+        }
+      } catch (err) {
+        console.error("WebSocket message error:", err);
+      }
+    };
+
+    wsRef.current.onerror = () => {
+      setConnected(false);
+      console.error("WebSocket error");
+    };
+
+    wsRef.current.onclose = () => {
+      setConnected(false);
+      console.log("WebSocket disconnected");
+    };
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [tracking.orderId]);
+
+  // Fallback simulation if WebSocket not connected
+  useEffect(() => {
+    if (connected) return;
+
     const timer = setInterval(() => {
       setSpeed((prev) => +(prev + (Math.random() * 2 - 1)).toFixed(1));
       setTemp((prev) => +(prev + (Math.random() * 0.1 - 0.05)).toFixed(1));
     }, 3000);
     return () => clearInterval(timer);
-  }, []);
+  }, [connected]);
 
   const handleSimulateAdvance = () => {
     setRiderProgress((p) => Math.min(95, p + 10));
@@ -57,6 +118,13 @@ export const LiveTrackingView: React.FC<LiveTrackingViewProps> = ({
               <Zap className="w-3.5 h-3.5 fill-current" /> 45-MIN FAST DISPATCH
             </span>
             <span className="text-xs font-mono text-[#76777d]">Order #{tracking.orderId}</span>
+            <span className="flex items-center gap-1 text-[10px] font-mono">
+              {connected ? (
+                <><Wifi className="w-3 h-3 text-emerald-600" /> Live</>
+              ) : (
+                <><WifiOff className="w-3 h-3 text-amber-600" /> Simulated</>
+              )}
+            </span>
           </div>
           <h2 className="text-xl font-bold text-[#0b1c30]">
             Arriving in <span className="text-[#006a61]">{eta} mins</span>

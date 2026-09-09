@@ -44,6 +44,8 @@ interface DesktopWebsiteViewProps {
   onApplySubstitution: (rxId: string, medId: string) => void;
   onCallRider: () => void;
   onCallHub: () => void;
+  onOpenAuth?: () => void;
+  [key: string]: any;
 }
 
 export const DesktopWebsiteView: React.FC<DesktopWebsiteViewProps> = ({
@@ -66,6 +68,7 @@ export const DesktopWebsiteView: React.FC<DesktopWebsiteViewProps> = ({
   onApplySubstitution,
   onCallRider,
   onCallHub,
+  onOpenAuth,
 }) => {
   const totalCartCount = cart.reduce((acc, item) => acc + (item.quantity || 0), 0);
   const totalBrand = cart.reduce((acc, i) => acc + (i.medicine?.brandPrice || 0) * (i.quantity || 1), 0);
@@ -90,6 +93,7 @@ export const DesktopWebsiteView: React.FC<DesktopWebsiteViewProps> = ({
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         emergencyContactNumber="+91 80 4912 8800"
+        onOpenAuth={onOpenAuth}
       />
 
       {/* Main Desktop Container */}

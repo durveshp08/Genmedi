@@ -1,6 +1,8 @@
 import React from "react";
-import { Search, FileText, Zap, Bot, ShoppingCart, Layers } from "lucide-react";
+import { Search, FileText, Zap, Bot, ShoppingCart, Layers, Stethoscope, SlidersHorizontal, AlertTriangle, Building2, ShieldCheck, Heart } from "lucide-react";
 import { TabType } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
+import { canAccessTab } from "../../types/auth";
 
 interface MobileBottomNavProps {
   activeTab: TabType;
@@ -13,13 +15,26 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onTabChange,
   cartCount = 0,
 }) => {
-  const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string; hasDot?: boolean }[] = [
+  const { user } = useAuth();
+  const userRole = user?.role as any;
+
+  const allNavItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string; hasDot?: boolean }[] = [
     { id: "discover", label: "Discover", icon: Search },
     { id: "rx_vault", label: "Rx Vault", icon: FileText },
     { id: "tracking", label: "45m GPS", icon: Zap, hasDot: true },
     { id: "ai_pharmacist", label: "AI Help", icon: Bot },
     { id: "checkout", label: "Cart", icon: ShoppingCart, badge: cartCount > 0 ? `${cartCount}` : undefined },
+    { id: "health_vault", label: "Vault", icon: Heart },
+    { id: "clinical_reviewer", label: "Review", icon: Stethoscope },
+    { id: "bioequivalence_studio", label: "Studio", icon: Layers },
+    { id: "admin_ops", label: "Ops", icon: SlidersHorizontal },
+    { id: "exception_resolution", label: "Alerts", icon: AlertTriangle },
+    { id: "pharmacy_hub", label: "Hub", icon: Building2 },
+    { id: "architecture", label: "Arch", icon: ShieldCheck },
   ];
+
+  // Filter nav items based on user role
+  const navItems = allNavItems.filter((item) => canAccessTab(userRole, item.id));
 
   return (
     <nav 

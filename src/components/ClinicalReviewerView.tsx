@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Stethoscope, 
   ShieldCheck, 
@@ -12,27 +12,71 @@ import {
   Eye, 
   Check, 
   ExternalLink,
-  Lock
+  Lock,
+  Loader2,
+  User,
+  Calendar,
+  ChevronRight
 } from "lucide-react";
 import { Prescription } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { api } from "../services/api";
 
 interface ClinicalReviewerViewProps {
   prescriptions: Prescription[];
+  onVerifyPrescription?: (id: string) => void;
 }
 
 export const ClinicalReviewerView: React.FC<ClinicalReviewerViewProps> = ({
   prescriptions,
+  onVerifyPrescription,
 }) => {
-  const [selectedRx, setSelectedRx] = useState<Prescription>(prescriptions[0]);
+  const { user } = useAuth();
+  const [selectedRx, setSelectedRx] = useState<Prescription | null>(prescriptions[0] || null);
   const [signedState, setSignedState] = useState<"pending" | "approved" | "rejected">(
-    selectedRx.status === "verified" ? "approved" : "pending"
+    selectedRx?.status === "verified" ? "approved" : "pending"
   );
   const [showPkiSuccess, setShowPkiSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [queueFilter, setQueueFilter] = useState<"all" | "pending" | "verified">("pending");
 
-  const handlePkiSign = () => {
-    setShowPkiSuccess(true);
-    setSignedState("approved");
-    setTimeout(() => setShowPkiSuccess(false), 3000);
+  // Filter prescriptions based on queue status
+  const filteredPrescriptions = prescriptions.filter((rx) => {
+    if (queueFilter === "all") return true;
+    if (queueFilter === "pending") return rx.status === "pending_review";
+    if (queueFilter === "verified") return rx.status === "verified";
+    return true;
+  });
+
+  const handlePkiSign = async () => {
+    if (!selectedRx || !user?.pharmacistRegNo) return;
+    
+    setLoading(true);
+    try {
+      await api.prescriptions.verify(
+        selectedRx.id,
+        user.name,
+        user.pharmacistRegNo
+      );
+      
+      if (onVerifyPrescription) {
+        onVerifyPrescription(selectedRx.id);
+      }
+      
+      setShowPkiSuccess(true);
+      setSignedState("approved");
+      setTimeout(() => setShowPkiSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to sign prescription:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = () => {
+    if (!selectedRx) return;
+    setSignedState("rejected");
+    // In production, this would call an API to reject the prescription
   };
 
   return (
@@ -80,49 +124,137 @@ export const ClinicalReviewerView: React.FC<ClinicalReviewerViewProps> = ({
 
       {/* Main Dual-Pane Reviewer Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Scanned Rx with AI Bounding Boxes (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-4">
+        {/* Left: Prescription Queue List (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#0b1c30] flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#006a61]" /> Triage Queue
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setQueueFilter("pending")}
+                className={`text-[10px] px-2 py-0.5 rounded font-bold transition-colors ${
+                  queueFilter === "pending" ? "bg-[#006a61] text-white" : "bg-[#eff4ff] text-[#45464d]"
+                }`}
+              >
+                Pending ({prescriptions.filter((p) => p.status === "pending_review").length})
+              </button>
+              <button
+                onClick={() => setQueueFilter("verified")}
+                className={`text-[10px] px-2 py-0.5 rounded font-bold transition-colors ${
+                  queueFilter === "verified" ? "bg-[#006a61] text-white" : "bg-[#eff4ff] text-[#45464d]"
+                }`}
+              >
+                Verified ({prescriptions.filter((p) => p.status === "verified").length})
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-[500px] overflow-y-auto">
+            {filteredPrescriptions.length === 0 ? (
+              <div className="text-center py-8 text-xs text-[#76777d]">
+                No prescriptions in queue
+              </div>
+            ) : (
+              filteredPrescriptions.map((rx) => (
+                <button
+                  key={rx.id}
+                  onClick={() => {
+                    setSelectedRx(rx);
+                    setSignedState(rx.status === "verified" ? "approved" : "pending");
+                  }}
+                  className={`w-full p-3 rounded-xl border text-left transition-all ${
+                    selectedRx?.id === rx.id
+                      ? "border-[#006a61] bg-[#eff4ff]"
+                      : "border-[#e5eeff] bg-white hover:border-[#dce9ff]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-xs text-[#0b1c30] truncate">{rx.patientName}</div>
+                      <div className="text-[10px] text-[#45464d] truncate">{rx.doctorName}</div>
+                      <div className="text-[10px] text-[#76777d] font-mono mt-1">{rx.date}</div>
+                    </div>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${
+                      rx.status === "verified"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : rx.status === "pending_review"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                    }`}>
+                      {rx.status === "verified" ? "Verified" : rx.status === "pending_review" ? "Pending" : "Rejected"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 text-[10px] text-[#76777d]">
+                    <FileText className="w-3 h-3" />
+                    <span>{rx.items.length} items</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Middle: Scanned Rx with AI Bounding Boxes (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#0b1c30] flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5 text-[#006a61]" /> Original Scanned Prescription
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#eff4ff] text-[#006a61] font-bold">
-              STAT 45-MIN QUEUE
-            </span>
+            {selectedRx && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#eff4ff] text-[#006a61] font-bold">
+                STAT 45-MIN QUEUE
+              </span>
+            )}
           </div>
 
-          <div className="relative rounded-xl border border-[#c6c6cd] bg-[#fffdfa] p-4 text-xs font-serif text-[#131b2e] min-h-[420px] space-y-4 shadow-inner">
-            <div className="text-center border-b pb-2">
-              <h4 className="font-bold font-sans text-[#0b1c30]">{selectedRx.doctorClinic}</h4>
-              <p className="font-sans text-[11px] text-[#45464d]">{selectedRx.doctorName} ({selectedRx.doctorRegNo})</p>
+          {!selectedRx ? (
+            <div className="flex items-center justify-center py-20 text-xs text-[#76777d]">
+              Select a prescription from the queue
             </div>
+          ) : (
+            <div className="relative rounded-xl border border-[#c6c6cd] bg-[#fffdfa] p-4 text-xs font-serif text-[#131b2e] min-h-[420px] space-y-4 shadow-inner">
+              <div className="text-center border-b pb-2">
+                <h4 className="font-bold font-sans text-[#0b1c30]">{selectedRx.doctorClinic}</h4>
+                <p className="font-sans text-[11px] text-[#45464d]">{selectedRx.doctorName} ({selectedRx.doctorRegNo})</p>
+              </div>
 
-            <div className="font-sans text-[11px] flex justify-between">
-              <span>Patient: <strong>{selectedRx.patientName}</strong> (34M)</span>
-              <span>Date: {selectedRx.date}</span>
-            </div>
+              <div className="font-sans text-[11px] flex justify-between">
+                <span>Patient: <strong>{selectedRx.patientName}</strong> ({selectedRx.patientAge}{selectedRx.patientGender[0]})</span>
+                <span>Date: {selectedRx.date}</span>
+              </div>
 
-            <div className="space-y-3 font-sans">
-              <div className="font-serif italic text-lg text-[#006a61] font-bold">℞</div>
-              {selectedRx.items.map((item, idx) => (
-                <div key={item.id} className="p-2 rounded bg-[#86f2e4]/15 border border-[#006a61]/30">
-                  <div className="font-bold text-[#0b1c30]">{item.brandName}</div>
-                  <div className="text-[10px] text-[#45464d]">{item.dosage} • {item.frequency}</div>
+              <div className="space-y-3 font-sans">
+                <div className="font-serif italic text-lg text-[#006a61] font-bold">℞</div>
+                {selectedRx.items.map((item, idx) => (
+                  <div key={item.id} className={`p-2 rounded border ${
+                    item.allergyFlag
+                      ? "bg-amber-50 border-amber-300"
+                      : "bg-[#86f2e4]/15 border-[#006a61]/30"
+                  }`}>
+                    <div className="font-bold text-[#0b1c30]">{item.brandName}</div>
+                    <div className="text-[10px] text-[#45464d]">{item.dosage} • {item.frequency} • {item.duration}</div>
+                    {item.allergyFlag && (
+                      <div className="text-[9px] text-amber-800 font-bold mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> ALLERGY FLAG
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-8 flex justify-between items-end font-sans">
+                <div className="text-[9px] text-[#76777d]">Digital Watermark: KA-29481-VALID</div>
+                <div className="text-right font-serif italic text-xs font-bold text-[#006a61]">
+                  Dr. S. Bannerjee
                 </div>
-              ))}
-            </div>
-
-            <div className="pt-8 flex justify-between items-end font-sans">
-              <div className="text-[9px] text-[#76777d]">Digital Watermark: KA-29481-VALID</div>
-              <div className="text-right font-serif italic text-xs font-bold text-[#006a61]">
-                Dr. S. Bannerjee
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Right: Structured Clinical Evaluation & PKI Sign-Off Console (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
+        {/* Right: Structured Clinical Evaluation & PKI Sign-Off Console (4 cols) */}
+        <div className="lg:col-span-4 space-y-6">
           {/* Automated CDSCO Rule Engine Checks */}
           <div className="bg-white rounded-2xl border border-[#dce9ff] p-5 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-[#0b1c30] flex items-center gap-1.5">
@@ -166,7 +298,9 @@ export const ClinicalReviewerView: React.FC<ClinicalReviewerViewProps> = ({
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-bold uppercase text-[#006a61] tracking-wider">CDSCO Licensed Pharmacist Sign-Off</span>
-                <h3 className="text-base font-bold text-[#0b1c30]">R.Ph. Ananya Sharma (Reg #KA-P-8821)</h3>
+                <h3 className="text-base font-bold text-[#0b1c30]">
+                  {user?.name || "R.Ph. Ananya Sharma"} {user?.pharmacistRegNo && `(Reg #${user.pharmacistRegNo})`}
+                </h3>
                 <p className="text-xs text-[#45464d]">Indiranagar Apollo Hub #048 Registered In-Charge</p>
               </div>
               <span className="p-2 rounded-xl bg-[#eff4ff] text-[#006a61]">
@@ -184,14 +318,18 @@ export const ClinicalReviewerView: React.FC<ClinicalReviewerViewProps> = ({
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
               <button
                 onClick={handlePkiSign}
-                disabled={signedState === "approved"}
+                disabled={signedState === "approved" || loading || !selectedRx}
                 className={`flex-1 w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm ${
                   signedState === "approved"
                     ? "bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-default"
                     : "bg-[#006a61] text-white hover:bg-[#005049]"
                 }`}
               >
-                {signedState === "approved" ? (
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Signing...
+                  </>
+                ) : signedState === "approved" ? (
                   <>
                     <Check className="w-4 h-4" /> Prescription Signed &amp; Released to Hub
                   </>
@@ -203,8 +341,8 @@ export const ClinicalReviewerView: React.FC<ClinicalReviewerViewProps> = ({
               </button>
 
               <button
-                onClick={() => setSignedState("rejected")}
-                disabled={signedState === "approved"}
+                onClick={handleReject}
+                disabled={signedState === "approved" || loading || !selectedRx}
                 className="w-full sm:w-auto px-4 py-3 rounded-xl border border-[#c6c6cd] text-[#ba1a1a] text-xs font-bold hover:bg-red-50 transition-colors disabled:opacity-40"
               >
                 Reject &amp; Escalate

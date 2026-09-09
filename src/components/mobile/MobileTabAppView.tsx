@@ -56,6 +56,8 @@ interface MobileTabAppViewProps {
   onApplySubstitution: (rxId: string, medId: string) => void;
   onCallRider: () => void;
   onCallHub: () => void;
+  onOpenAuth?: () => void;
+  [key: string]: any;
 }
 
 export const MobileTabAppView: React.FC<MobileTabAppViewProps> = ({

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Zap, 
   Truck, 
@@ -15,9 +15,12 @@ import {
   User,
   Plus,
   Minus,
-  Trash2
+  Trash2,
+  Loader2
 } from "lucide-react";
 import { CartItem } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { api } from "../services/api";
 
 const defaultFallbackItems: CartItem[] = [
   {
@@ -111,9 +114,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   onUpdateQuantity,
   onOpenAllergyHelp,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [deliverySpeed, setDeliverySpeed] = useState<"fast_45" | "standard">("fast_45");
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "cod">("upi");
   const [allergyAcknowledged, setAllergyAcknowledged] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [pricing, setPricing] = useState<{ subtotal: number; deliveryFee: number; gst: number; total: number; savings: number } | null>(null);
 
   // If cart is empty, provide default Rx items so user can experience checkout immediately
   const items = Array.isArray(cart) && cart.length > 0 ? cart : defaultFallbackItems;
@@ -124,8 +130,33 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     0
   );
   const netSavings = totalBrand - totalGeneric;
-  const deliveryFee = deliverySpeed === "fast_45" ? 39.0 : 0.0;
-  const grandTotal = totalGeneric + deliveryFee;
+
+  // Fetch pricing from API
+  useEffect(() => {
+    const fetchPricing = async () => {
+      try {
+        const data = await api.payments.getPricing(totalGeneric, deliverySpeed);
+        setPricing(data);
+      } catch (err) {
+        // Fallback to local calculation
+        const deliveryFee = deliverySpeed === "fast_45" ? 99 : (totalGeneric >= 500 ? 0 : 49);
+        const gst = Math.round((totalGeneric + deliveryFee) * 0.18);
+        setPricing({
+          subtotal: totalGeneric,
+          deliveryFee,
+          gst,
+          total: totalGeneric + deliveryFee + gst,
+          savings: Math.round(totalBrand * 0.7),
+        });
+      }
+    };
+
+    fetchPricing();
+  }, [totalGeneric, deliverySpeed]);
+
+  const deliveryFee = pricing?.deliveryFee ?? (deliverySpeed === "fast_45" ? 99 : 0);
+  const gst = pricing?.gst ?? 0;
+  const grandTotal = pricing?.total ?? totalGeneric + deliveryFee;
 
   const hasPenicillin = items.some(
     (i) => i.medicine?.allergenFlags?.includes("Penicillin") || (i.medicine?.brandName || "").includes("Augmentin")
@@ -426,16 +457,82 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           {/* Confirm & Place Order CTA */}
           <button
             type="button"
-            disabled={hasPenicillin && !allergyAcknowledged}
-            onClick={() => onPlaceOrder?.(deliverySpeed)}
+            disabled={hasPenicillin && !allergyAcknowledged || processingPayment}
+            onClick={async () => {
+              if (!isAuthenticated) {
+                alert("Please sign in to place an order");
+                return;
+              }
+
+              if (paymentMethod === "cod") {
+                onPlaceOrder?.(deliverySpeed);
+                return;
+              }
+
+              // Razorpay integration
+              setProcessingPayment(true);
+              try {
+                const order = await api.payments.createOrder({
+                  amount: totalGeneric,
+                  currency: "INR",
+                  receipt: `genmedi_${Date.now()}`,
+                  notes: { deliverySpeed, itemCount: String(items.length) },
+                });
+
+                // Load Razorpay script dynamically
+                const script = document.createElement("script");
+                script.src = "https://checkout.razorpay.com/v1/checkout.js";
+                script.async = true;
+                script.onload = () => {
+                  const options = {
+                    key: order.keyId,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: "Genmedi",
+                    description: "Medicine Order",
+                    order_id: order.orderId,
+                    handler: async (response: any) => {
+                      await api.payments.verifyPayment({
+                        razorpayOrderId: response.razorpay_order_id,
+                        razorpayPaymentId: response.razorpay_payment_id,
+                        razorpaySignature: response.razorpay_signature,
+                      });
+                      onPlaceOrder?.(deliverySpeed);
+                    },
+                    prefill: {
+                      name: "Rahul Verma",
+                      email: "rahul@example.com",
+                      contact: "919845019283",
+                    },
+                    theme: { color: "#006a61" },
+                  };
+                  const rzp = new (window as any).Razorpay(options);
+                  rzp.open();
+                };
+                document.body.appendChild(script);
+              } catch (err) {
+                console.error("Payment error:", err);
+                alert("Payment failed. Please try again.");
+              } finally {
+                setProcessingPayment(false);
+              }
+            }}
             className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer ${
-              hasPenicillin && !allergyAcknowledged
+              hasPenicillin && !allergyAcknowledged || processingPayment
                 ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                 : "bg-[#006a61] hover:bg-[#005049] text-white"
             }`}
           >
-            <span>Confirm &amp; Dispatch in 45 Minutes (₹{grandTotal.toFixed(2)})</span>
-            <ArrowRight className="w-4 h-4" />
+            {processingPayment ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+              </>
+            ) : (
+              <>
+                <span>Confirm &amp; Dispatch in 45 Minutes (₹{grandTotal.toFixed(2)})</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
 
           {hasPenicillin && !allergyAcknowledged && (
