@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { prisma } from "../db";
+import { User } from "../models";
 
 // ─── Extend Express Request ────────────────────────────────
 export interface AuthUser {
@@ -69,25 +69,23 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   try {
     const decoded = verifyAccessToken(token);
 
-    prisma.user
-      .findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-          abhaId: true,
-          pharmacistRegNo: true,
-          pharmacistVerified: true,
-        },
-      })
+    User.findById(decoded.id)
+      .select("name email phone role abhaId pharmacistRegNo pharmacistVerified")
+      .lean()
       .then((user) => {
         if (!user) {
           return res.status(401).json({ error: "User not found" });
         }
-        req.user = user;
+        req.user = {
+          id: (user as any)._id.toString(),
+          name: user.name,
+          email: user.email,
+          phone: user.phone || null,
+          role: user.role,
+          abhaId: user.abhaId || null,
+          pharmacistRegNo: user.pharmacistRegNo || null,
+          pharmacistVerified: user.pharmacistVerified,
+        };
         next();
       })
       .catch((err) => {
@@ -120,23 +118,21 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const decoded = verifyAccessToken(token);
 
-    prisma.user
-      .findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-          abhaId: true,
-          pharmacistRegNo: true,
-          pharmacistVerified: true,
-        },
-      })
+    User.findById(decoded.id)
+      .select("name email phone role abhaId pharmacistRegNo pharmacistVerified")
+      .lean()
       .then((user) => {
         if (user) {
-          req.user = user;
+          req.user = {
+            id: (user as any)._id.toString(),
+            name: user.name,
+            email: user.email,
+            phone: user.phone || null,
+            role: user.role,
+            abhaId: user.abhaId || null,
+            pharmacistRegNo: user.pharmacistRegNo || null,
+            pharmacistVerified: user.pharmacistVerified,
+          };
         }
         next();
       })

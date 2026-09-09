@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db";
+import { Medicine, DissolutionData } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 
 export const dissolutionRouter = Router();
@@ -14,22 +14,15 @@ dissolutionRouter.get(
     const { medicineId } = req.params;
 
     // Verify medicine exists
-    const medicine = await prisma.medicine.findUnique({ where: { id: medicineId } });
+    const medicine = await Medicine.findById(medicineId).lean();
     if (!medicine) {
       throw new ApiError(404, `Medicine with ID "${medicineId}" not found`);
     }
 
-    const data = await prisma.dissolutionData.findMany({
-      where: { medicineId },
-      orderBy: { timeMinutes: "asc" },
-      select: {
-        timeMinutes: true,
-        innovatorRelease: true,
-        genericRelease: true,
-        toleranceLower: true,
-        toleranceUpper: true,
-      },
-    });
+    const data = await DissolutionData.find({ medicineId })
+      .sort({ timeMinutes: 1 })
+      .select("timeMinutes innovatorRelease genericRelease toleranceLower toleranceUpper -_id")
+      .lean();
 
     res.json({
       medicineId,

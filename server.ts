@@ -1,8 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
+
+// Database connection (MongoDB via Mongoose)
+import "./server/db";
 
 // Route modules
 import { healthRouter } from "./server/routes/health";
@@ -27,7 +32,7 @@ import { getTrackingServer } from "./server/websocket/tracking";
 import { errorHandler } from "./server/middleware/errorHandler";
 import { auditLogger } from "./server/middleware/audit";
 
-dotenv.config();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

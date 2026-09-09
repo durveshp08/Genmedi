@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import Razorpay from "razorpay";
-import { prisma } from "../db";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
 import { authenticateToken } from "../middleware/auth";

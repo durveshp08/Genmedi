@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { prisma } from "../db";
+import { PriorityException, Order } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 
 export const exceptionsRouter = Router();
 
 /**
- * Converts a Prisma exception to the frontend PriorityException type.
+ * Converts a Mongoose exception to the frontend PriorityException type.
  */
-function toExceptionResponse(exc: any) {
+function toExceptionResponse(exc: any, hubName?: string) {
   return {
-    id: exc.id,
+    id: exc._id,
     orderId: exc.orderId,
-    hub: exc.order?.hubName ?? "Unknown Hub",
+    hub: hubName ?? "Unknown Hub",
     type: exc.type,
     severity: exc.severity,
     description: exc.description,
@@ -29,14 +29,21 @@ function toExceptionResponse(exc: any) {
 exceptionsRouter.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const exceptions = await prisma.priorityException.findMany({
-      where: { status: { not: "resolved" } },
-      include: { order: { select: { hubName: true } } },
-      orderBy: { slaRemainingMins: "asc" },
-    });
+    const exceptions = await PriorityException.find({ status: { $ne: "resolved" } })
+      .sort({ slaRemainingMins: 1 })
+      .lean();
+
+    // Fetch associated order hub names
+    const orderIds = [...new Set(exceptions.map((e) => e.orderId.toString()))];
+    const orders = await Order.find({ _id: { $in: orderIds } })
+      .select("hubName")
+      .lean();
+    const hubMap = new Map(orders.map((o) => [o._id.toString(), o.hubName]));
 
     res.json({
-      data: exceptions.map(toExceptionResponse),
+      data: exceptions.map((exc) =>
+        toExceptionResponse(exc, hubMap.get(exc.orderId.toString()))
+      ),
       total: exceptions.length,
     });
   })
@@ -49,13 +56,20 @@ exceptionsRouter.get(
 exceptionsRouter.get(
   "/all",
   asyncHandler(async (_req, res) => {
-    const exceptions = await prisma.priorityException.findMany({
-      include: { order: { select: { hubName: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const exceptions = await PriorityException.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const orderIds = [...new Set(exceptions.map((e) => e.orderId.toString()))];
+    const orders = await Order.find({ _id: { $in: orderIds } })
+      .select("hubName")
+      .lean();
+    const hubMap = new Map(orders.map((o) => [o._id.toString(), o.hubName]));
 
     res.json({
-      data: exceptions.map(toExceptionResponse),
+      data: exceptions.map((exc) =>
+        toExceptionResponse(exc, hubMap.get(exc.orderId.toString()))
+      ),
       total: exceptions.length,
     });
   })
@@ -70,17 +84,21 @@ exceptionsRouter.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const existing = await prisma.priorityException.findUnique({ where: { id } });
+    const existing = await PriorityException.findById(id);
     if (!existing) {
       throw new ApiError(404, `Exception with ID "${id}" not found`);
     }
 
-    const exception = await prisma.priorityException.update({
-      where: { id },
-      data: { status: "resolved" },
-      include: { order: { select: { hubName: true } } },
-    });
+    const exception = await PriorityException.findByIdAndUpdate(
+      id,
+      { status: "resolved" },
+      { new: true }
+    ).lean();
 
-    res.json(toExceptionResponse(exception));
+    const order = await Order.findById(exception!.orderId)
+      .select("hubName")
+      .lean();
+
+    res.json(toExceptionResponse(exception, order?.hubName));
   })
 );

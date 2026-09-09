@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { prisma } from "../db";
+import { Order, StockistHub } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
 import { authenticateToken } from "../middleware/auth";
@@ -50,11 +50,11 @@ function canTransition(from: OrderStatus, to: OrderStatus): boolean {
 export const ordersRouter = Router();
 
 /**
- * Converts a Prisma order to the frontend OrderTracking type.
+ * Converts a Mongoose order to the frontend OrderTracking type.
  */
 function toOrderResponse(order: any) {
   return {
-    orderId: order.id,
+    orderId: order._id,
     status: order.status,
     etaMinutes: order.etaMinutes,
     riderName: order.riderName,
@@ -68,7 +68,7 @@ function toOrderResponse(order: any) {
     hubAddress: order.hubAddress,
     customerAddress: order.customerAddress,
     tamperSealBarcode: order.tamperSealBarcode,
-    stages: typeof order.stages === "string" ? JSON.parse(order.stages) : order.stages,
+    stages: order.stages,
   };
 }
 
@@ -79,9 +79,7 @@ function toOrderResponse(order: any) {
 ordersRouter.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
 
     res.json({
       data: orders.map(toOrderResponse),
@@ -100,7 +98,7 @@ ordersRouter.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await Order.findById(id).lean();
 
     if (!order) {
       throw new ApiError(404, `Order with ID "${id}" not found`);
@@ -121,15 +119,15 @@ ordersRouter.post(
     const { prescriptionId, customerAddress, deliverySpeed, items } = req.body;
 
     // Generate order metadata
-    const orderId = `GM-${Math.floor(10000 + Math.random() * 90000)}`;
     const otp = String(Math.floor(1000 + Math.random() * 9000));
     const tamperSeal = `TS-IND-${Math.floor(1000 + Math.random() * 9000)}-X`;
 
     // Find nearest hub
-    const hub = await prisma.stockistHub.findFirst({
-      where: { fastDeliveryAvailable: deliverySpeed === "fast_45" ? true : undefined },
-      orderBy: { distanceKm: "asc" },
-    });
+    const hubFilter: any = {};
+    if (deliverySpeed === "fast_45") {
+      hubFilter.fastDeliveryAvailable = true;
+    }
+    const hub = await StockistHub.findOne(hubFilter).sort({ distanceKm: 1 }).lean();
 
     const etaMinutes = deliverySpeed === "fast_45" ? (hub?.estimatedDeliveryMins ?? 45) : 90;
 
@@ -171,28 +169,25 @@ ordersRouter.post(
       },
     ];
 
-    const order = await prisma.order.create({
-      data: {
-        id: orderId,
-        status: "order_placed",
-        etaMinutes,
-        riderName: "Assigning rider...",
-        riderPhone: "",
-        riderRating: 0,
-        vehicle: "Pending assignment",
-        currentSpeedKmh: 0,
-        boxTemperatureCelsius: 4.0,
-        handoverOtp: otp,
-        hubName: hub?.name ?? "Nearest Available Hub",
-        hubAddress: hub?.address ?? "",
-        customerAddress,
-        tamperSealBarcode: tamperSeal,
-        stages: JSON.stringify(stages),
-        prescriptionId: prescriptionId || null,
-      },
+    const order = await Order.create({
+      status: "order_placed",
+      etaMinutes,
+      riderName: "Assigning rider...",
+      riderPhone: "",
+      riderRating: 0,
+      vehicle: "Pending assignment",
+      currentSpeedKmh: 0,
+      boxTemperatureCelsius: 4.0,
+      handoverOtp: otp,
+      hubName: hub?.name ?? "Nearest Available Hub",
+      hubAddress: hub?.address ?? "",
+      customerAddress,
+      tamperSealBarcode: tamperSeal,
+      stages,
+      prescriptionId: prescriptionId || null,
     });
 
-    res.status(201).json(toOrderResponse(order));
+    res.status(201).json(toOrderResponse(order.toObject()));
   })
 );
 
@@ -209,7 +204,7 @@ ordersRouter.patch(
     const { status } = req.body;
     const userRole = req.user?.role;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await Order.findById(id);
 
     if (!order) {
       throw new ApiError(404, `Order with ID "${id}" not found`);
@@ -231,10 +226,11 @@ ordersRouter.patch(
       throw new ApiError(403, `Role ${userRole} is not authorized to transition to ${status}`);
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: { status },
-    });
+    const updated = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    ).lean();
 
     res.json(toOrderResponse(updated));
   })

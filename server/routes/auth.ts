@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import { prisma } from "../db";
+import { User, Session } from "../models";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
 import {
@@ -27,14 +27,14 @@ authRouter.post(
     const { name, email, phone, password, role, pharmacistRegNo } = req.body;
 
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       throw new ApiError(409, "An account with this email already exists");
     }
 
     // Check if phone already exists (if provided)
     if (phone) {
-      const existingPhone = await prisma.user.findFirst({ where: { phone } });
+      const existingPhone = await User.findOne({ phone });
       if (existingPhone) {
         throw new ApiError(409, "An account with this phone number already exists");
       }
@@ -42,9 +42,7 @@ authRouter.post(
 
     // Check pharmacist reg number uniqueness
     if (pharmacistRegNo) {
-      const existingReg = await prisma.user.findFirst({
-        where: { pharmacistRegNo },
-      });
+      const existingReg = await User.findOne({ pharmacistRegNo });
       if (existingReg) {
         throw new ApiError(409, "This pharmacist registration number is already registered");
       }
@@ -55,38 +53,37 @@ authRouter.post(
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        phone: phone || null,
-        passwordHash,
-        role: role || "patient",
-        pharmacistRegNo: pharmacistRegNo || null,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        abhaId: true,
-        pharmacistRegNo: true,
-        pharmacistVerified: true,
-        createdAt: true,
-      },
+    const userDoc = await User.create({
+      name,
+      email,
+      phone: phone || null,
+      passwordHash,
+      role: role || "patient",
+      pharmacistRegNo: pharmacistRegNo || null,
     });
+
+    const user = {
+      id: userDoc._id,
+      name: userDoc.name,
+      email: userDoc.email,
+      phone: userDoc.phone,
+      role: userDoc.role,
+      abhaId: userDoc.abhaId,
+      pharmacistRegNo: userDoc.pharmacistRegNo,
+      pharmacistVerified: userDoc.pharmacistVerified,
+      createdAt: userDoc.createdAt,
+    };
 
     // Generate tokens
     const authUser: AuthUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      abhaId: user.abhaId,
-      pharmacistRegNo: user.pharmacistRegNo,
-      pharmacistVerified: user.pharmacistVerified,
+      id: userDoc._id.toString(),
+      name: userDoc.name,
+      email: userDoc.email,
+      phone: userDoc.phone || null,
+      role: userDoc.role,
+      abhaId: userDoc.abhaId || null,
+      pharmacistRegNo: userDoc.pharmacistRegNo || null,
+      pharmacistVerified: userDoc.pharmacistVerified,
     };
 
     const accessToken = generateAccessToken(authUser);
@@ -94,12 +91,10 @@ authRouter.post(
 
     // Store refresh token in session table
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-    await prisma.session.create({
-      data: {
-        token: refreshToken,
-        expiresAt,
-        userId: user.id,
-      },
+    await Session.create({
+      token: refreshToken,
+      expiresAt,
+      userId: userDoc._id,
     });
 
     res.status(201).json({
@@ -118,41 +113,30 @@ authRouter.post(
     const { email, password } = req.body;
 
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        abhaId: true,
-        pharmacistRegNo: true,
-        pharmacistVerified: true,
-        passwordHash: true,
-      },
-    });
+    const userDoc = await User.findOne({ email }).select(
+      "name email phone role abhaId pharmacistRegNo pharmacistVerified passwordHash"
+    );
 
-    if (!user) {
+    if (!userDoc) {
       throw new ApiError(401, "Invalid email or password");
     }
 
     // Verify password
-    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    const validPassword = await bcrypt.compare(password, userDoc.passwordHash);
     if (!validPassword) {
       throw new ApiError(401, "Invalid email or password");
     }
 
     // Generate tokens
     const authUser: AuthUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      abhaId: user.abhaId,
-      pharmacistRegNo: user.pharmacistRegNo,
-      pharmacistVerified: user.pharmacistVerified,
+      id: userDoc._id.toString(),
+      name: userDoc.name,
+      email: userDoc.email,
+      phone: userDoc.phone || null,
+      role: userDoc.role,
+      abhaId: userDoc.abhaId || null,
+      pharmacistRegNo: userDoc.pharmacistRegNo || null,
+      pharmacistVerified: userDoc.pharmacistVerified,
     };
 
     const accessToken = generateAccessToken(authUser);
@@ -160,16 +144,23 @@ authRouter.post(
 
     // Store refresh token session
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.session.create({
-      data: {
-        token: refreshToken,
-        expiresAt,
-        userId: user.id,
-      },
+    await Session.create({
+      token: refreshToken,
+      expiresAt,
+      userId: userDoc._id,
     });
 
     // Return user without passwordHash
-    const { passwordHash: _, ...safeUser } = user;
+    const safeUser = {
+      id: userDoc._id,
+      name: userDoc.name,
+      email: userDoc.email,
+      phone: userDoc.phone,
+      role: userDoc.role,
+      abhaId: userDoc.abhaId,
+      pharmacistRegNo: userDoc.pharmacistRegNo,
+      pharmacistVerified: userDoc.pharmacistVerified,
+    };
 
     res.json({
       user: safeUser,
@@ -187,9 +178,7 @@ authRouter.post(
 
     if (refreshToken) {
       // Delete the session associated with this refresh token
-      await prisma.session
-        .deleteMany({ where: { token: refreshToken } })
-        .catch(() => {});
+      await Session.deleteMany({ token: refreshToken }).catch(() => {});
     }
 
     res.json({ message: "Logged out successfully" });
@@ -212,12 +201,10 @@ authRouter.post(
     }
 
     // Check if session exists and is not expired
-    const session = await prisma.session.findFirst({
-      where: {
-        token: refreshToken,
-        userId: decoded.id,
-        expiresAt: { gt: new Date() },
-      },
+    const session = await Session.findOne({
+      token: refreshToken,
+      userId: decoded.id,
+      expiresAt: { $gt: new Date() },
     });
 
     if (!session) {
@@ -225,31 +212,39 @@ authRouter.post(
     }
 
     // Get fresh user data
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        abhaId: true,
-        pharmacistRegNo: true,
-        pharmacistVerified: true,
-      },
-    });
+    const userDoc = await User.findById(decoded.id).select(
+      "name email phone role abhaId pharmacistRegNo pharmacistVerified"
+    );
 
-    if (!user) {
+    if (!userDoc) {
       throw new ApiError(401, "User no longer exists");
     }
 
     // Generate new access token
-    const authUser: AuthUser = user;
+    const authUser: AuthUser = {
+      id: userDoc._id.toString(),
+      name: userDoc.name,
+      email: userDoc.email,
+      phone: userDoc.phone || null,
+      role: userDoc.role,
+      abhaId: userDoc.abhaId || null,
+      pharmacistRegNo: userDoc.pharmacistRegNo || null,
+      pharmacistVerified: userDoc.pharmacistVerified,
+    };
     const newAccessToken = generateAccessToken(authUser);
 
     res.json({
       accessToken: newAccessToken,
-      user,
+      user: {
+        id: userDoc._id,
+        name: userDoc.name,
+        email: userDoc.email,
+        phone: userDoc.phone,
+        role: userDoc.role,
+        abhaId: userDoc.abhaId,
+        pharmacistRegNo: userDoc.pharmacistRegNo,
+        pharmacistVerified: userDoc.pharmacistVerified,
+      },
     });
   })
 );
@@ -259,33 +254,13 @@ authRouter.get(
   "/me",
   authenticateToken,
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        age: true,
-        gender: true,
-        abhaId: true,
-        avatarUrl: true,
-        pharmacistRegNo: true,
-        pharmacistLicense: true,
-        pharmacistVerified: true,
-        allergies: true,
-        addresses: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const userDoc = await User.findById(req.user!.id).select("-passwordHash").lean();
 
-    if (!user) {
+    if (!userDoc) {
       throw new ApiError(404, "User not found");
     }
 
-    res.json(user);
+    res.json(userDoc);
   })
 );
 

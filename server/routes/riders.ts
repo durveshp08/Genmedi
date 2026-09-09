@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import { prisma } from "../db";
 import { asyncHandler, ApiError } from "../middleware/errorHandler";
 import { authenticateToken } from "../middleware/auth";
 
