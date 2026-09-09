@@ -2,11 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
-import { createServer as createViteServer } from "vite";
 
-// Database connection (MongoDB via Mongoose)
+// Database connection
 import "./server/db";
 
 // Route modules
@@ -34,16 +31,24 @@ import { auditLogger } from "./server/middleware/audit";
 
 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 
 // Initialize WebSocket tracking server
 const trackingServer = getTrackingServer();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 app.use(express.json({ limit: "10mb" }));
+
+// Allow the standalone frontend to call this API in development and production.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
+  res.header("Vary", "Origin");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
 // ─── Security & Audit Middleware ─────────────────────────────
 app.use(auditLogger);
@@ -69,25 +74,7 @@ app.use("/api/compliance", complianceRouter);
 // ─── Global Error Handler (must be after routes) ────────────
 app.use(errorHandler);
 
-// ─── Vite Middleware or Static Serving ──────────────────────
-async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Genmedi fullstack server running on http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+// ─── Start Server ────────────────────────────────────────────
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Genmedi backend API server running on http://localhost:${PORT}`);
+});
