@@ -18,6 +18,7 @@ import {
   WifiOff
 } from "lucide-react";
 import { OrderTracking } from "../types";
+import { API_URL } from "../services/api";
 
 interface LiveTrackingViewProps {
   tracking: OrderTracking;
@@ -50,7 +51,11 @@ export const LiveTrackingView: React.FC<LiveTrackingViewProps> = ({
 
   // WebSocket connection for real-time tracking
   useEffect(() => {
-    const wsUrl = `ws://localhost:8080?orderId=${tracking.orderId}`;
+    const configuredUrl = import.meta.env.VITE_WS_URL;
+    const wsBaseUrl = configuredUrl
+      ? configuredUrl.replace(/\/$/, "")
+      : `${API_URL.replace(/^http/, "ws")}/ws/tracking`;
+    const wsUrl = `${wsBaseUrl}?orderId=${encodeURIComponent(tracking.orderId)}`;
     wsRef.current = new WebSocket(wsUrl);
 
     wsRef.current.onopen = () => {

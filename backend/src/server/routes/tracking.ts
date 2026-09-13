@@ -12,7 +12,7 @@ trackingRouter.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { orderId, lat, lng, speedKmh, temperature, etaMinutes } = req.body;
 
-    if (!orderId || !lat || !lng) {
+    if (!orderId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
       throw new ApiError(400, "orderId, lat, and lng are required");
     }
 
