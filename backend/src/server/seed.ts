@@ -24,15 +24,31 @@ async function main() {
   console.log("✅ Connected to MongoDB\n");
 
   // ─── Clear existing data ────────────────────────────────
-  await DissolutionData.deleteMany({});
-  await PriorityException.deleteMany({});
-  await CartItem.deleteMany({});
-  await Order.deleteMany({});
-  await Prescription.deleteMany({});
-  await Session.deleteMany({});
-  await User.deleteMany({});
-  await Medicine.deleteMany({});
-  await StockistHub.deleteMany({});
+  try {
+    // Drop all problematic unique indexes on nullable fields
+    const indexesToDrop = ["abhaId_1", "pharmacistRegNo_1", "phone_1"];
+    for (const indexName of indexesToDrop) {
+      try {
+        await User.collection.dropIndex(indexName);
+        console.log(`✅ Dropped ${indexName} index`);
+      } catch (indexError) {
+        console.log(`⚠️ Index ${indexName} might not exist or already dropped`);
+      }
+    }
+
+    await DissolutionData.deleteMany({});
+    await PriorityException.deleteMany({});
+    await CartItem.deleteMany({});
+    await Order.deleteMany({});
+    await Prescription.deleteMany({});
+    await Session.deleteMany({});
+    await User.deleteMany({});
+    await Medicine.deleteMany({});
+    await StockistHub.deleteMany({});
+    console.log("✅ Cleared existing data\n");
+  } catch (error) {
+    console.log("⚠️ Error clearing data, might be first run:", error);
+  }
 
   // ─── Seed Users ─────────────────────────────────────────
   const passwordHash = await bcrypt.hash("genmedi123", 12);
