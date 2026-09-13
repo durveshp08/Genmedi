@@ -16,12 +16,32 @@ import { canAccessTab } from "./types/auth";
 import { CheckCircle2 } from "lucide-react";
 
 function AppContent() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState<TabType>("discover");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("auto");
   const [detectedViewport, setDetectedViewport] = useState<"desktop" | "tablet" | "phone">("desktop");
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // ─── Login-First: Show auth screen if not authenticated ─────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#86f2e4] mx-auto mb-4"></div>
+          <p className="text-[#0b1c30]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center p-4">
+        <AuthModal isOpen={true} onClose={() => {}} isFullScreen={true} />
+      </div>
+    );
+  }
 
   // ─── API-Sourced Data ────────────────────────────────────
   const { data: medicines, loading: medLoading } = useApiQuery(
@@ -280,7 +300,7 @@ function AppContent() {
       )}
 
       {/* Auth Modal */}
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} isFullScreen={false} />
 
       {/* Render Distinct UI based on Device Mode / Viewport */}
       {isDesktopUI ? (
