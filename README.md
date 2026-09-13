@@ -6,17 +6,18 @@ A complete e-pharmacy platform for affordable generic medicines with 45-minute d
 
 ```
 genmedi/
-├── frontend/          # React + Vite frontend application
+├── frontend/          # React + Vite application (deploy to Vercel)
 │   ├── src/           # Source code
 │   ├── public/        # Static assets
 │   ├── package.json   # Frontend dependencies
 │   └── .env.example   # Frontend environment variables
 │
-├── backend/           # Express.js backend API
+├── backend/           # Express.js API (deploy to Render)
 │   ├── src/           # API entry point, routes, middleware, services, models
 │   ├── package.json   # Backend dependencies
 │   └── .env.example   # Backend environment variables
 │
+├── render.yaml        # Render deployment blueprint
 └── README.md          # This file
 ```
 
@@ -135,7 +136,7 @@ npm run dev
 
 ### Tracking
 - `GET /api/tracking/:orderId` - Get order tracking info
-- WebSocket: `ws://localhost:8080?orderId=xxx` - Real-time tracking
+- WebSocket: `ws://localhost:3000/ws/tracking?orderId=xxx` - Real-time tracking
 
 ### Compliance
 - `GET /api/compliance/records` - Get compliance records

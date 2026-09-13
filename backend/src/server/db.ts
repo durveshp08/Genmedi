@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
+import dotenv from "dotenv";
 
+// This module can be evaluated before the application entry point in ESM.
+// Load local development settings here before reading DATABASE_URL.
+dotenv.config({ override: process.env.NODE_ENV !== "production" });
 const DATABASE_URL = process.env.DATABASE_URL || "mongodb://localhost:27017/genmedi";
 const RECONNECT_DELAY_MS = 10_000;
 let reconnectTimer: NodeJS.Timeout | undefined;

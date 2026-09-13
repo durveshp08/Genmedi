@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import type { Server } from "node:http";
 
 interface RiderLocation {
   orderId: string;
@@ -20,8 +21,8 @@ class TrackingServer {
   private clients: Map<string, Client[]> = new Map();
   private riderLocations: Map<string, RiderLocation> = new Map();
 
-  constructor(port: number = 8080) {
-    this.wss = new WebSocketServer({ port });
+  constructor(server: Server) {
+    this.wss = new WebSocketServer({ server, path: "/ws/tracking" });
     this.setupServer();
     this.startSimulation();
   }
@@ -79,7 +80,7 @@ class TrackingServer {
       });
     });
 
-    console.log(`WebSocket tracking server running on port ${this.wss.options.port}`);
+    console.log("WebSocket tracking server attached at /ws/tracking");
   }
 
   private handleMessage(client: Client, data: any) {
@@ -153,9 +154,12 @@ class TrackingServer {
 // Singleton instance
 let trackingServer: TrackingServer | null = null;
 
-export function getTrackingServer(): TrackingServer {
+export function getTrackingServer(server?: Server): TrackingServer {
   if (!trackingServer) {
-    trackingServer = new TrackingServer(8080);
+    if (!server) {
+      throw new Error("Tracking server must be initialized with the HTTP server");
+    }
+    trackingServer = new TrackingServer(server);
   }
   return trackingServer;
 }

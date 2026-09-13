@@ -1,4 +1,20 @@
 import { Request, Response, NextFunction } from "express";
+import { mongoose } from "../db";
+
+/**
+ * Avoid Mongoose's long query-buffer timeout when the database is unavailable.
+ * The health route remains available so clients and deployment probes can report
+ * the real connection state.
+ */
+export const requireDatabase = (_req: Request, res: Response, next: NextFunction) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      error: "Database is temporarily unavailable. Please try again shortly.",
+      code: "DATABASE_UNAVAILABLE",
+    });
+  }
+  next();
+};
 
 // Simple in-memory rate limiter (for production, use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();

@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import http from "node:http";
 import express from "express";
 
 // Database connection
@@ -28,13 +29,15 @@ import { getTrackingServer } from "./server/websocket/tracking";
 // Middleware
 import { errorHandler } from "./server/middleware/errorHandler";
 import { auditLogger } from "./server/middleware/audit";
+import { requireDatabase } from "./server/middleware/security";
 
 
 
 const app = express();
+const server = http.createServer(app);
 
 // Initialize WebSocket tracking server
-const trackingServer = getTrackingServer();
+getTrackingServer(server);
 const PORT = Number(process.env.PORT) || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -55,6 +58,7 @@ app.use(auditLogger);
 
 // ─── API Routes ─────────────────────────────────────────────
 app.use("/api", healthRouter);
+app.use("/api", requireDatabase);
 app.use("/api/auth", authRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/medicines", medicinesRouter);
@@ -75,6 +79,6 @@ app.use("/api/compliance", complianceRouter);
 app.use(errorHandler);
 
 // ─── Start Server ────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Genmedi backend API server running on http://localhost:${PORT}`);
 });

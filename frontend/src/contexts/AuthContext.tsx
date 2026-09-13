@@ -6,6 +6,7 @@ import type {
   RegisterData,
   AuthResponse,
 } from "../types/auth";
+import { API_URL } from "../services/api";
 
 // ─── Token Storage ──────────────────────────────────────────
 
@@ -42,7 +43,7 @@ async function authFetch<T>(
   if (body) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(url, {
+  const res = await fetch(`${API_URL}${url}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
