@@ -2,73 +2,133 @@
 
 A complete e-pharmacy platform for affordable generic medicines with 45-minute delivery in India.
 
+## 🚀 Deployment Architecture
+
+```
+┌─────────────────┐
+│   GitHub Repo   │
+│  (Source Code)  │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+┌───▼────┐ ┌──▼─────────┐
+│ Vercel │ │  Render    │
+│(Frontend)│ │ (Backend) │
+└───┬────┘ └──┬─────────┘
+    │         │
+    │    ┌────▼────┐
+    │    │ MongoDB │
+    │    │  Atlas  │
+    │    └─────────┘
+    │
+    └──► User
+```
+
+- **Frontend**: Vercel (React + Vite)
+- **Backend**: Render (Express.js + Node.js)
+- **Database**: MongoDB Atlas
+- **Repository**: GitHub
+
 ## Project Structure
 
 ```
 genmedi/
-├── frontend/          # React + Vite application (deploy to Vercel)
-│   ├── src/           # Source code
-│   ├── public/        # Static assets
-│   ├── package.json   # Frontend dependencies
-│   └── .env.example   # Frontend environment variables
+├── frontend/                 # React + Vite application (deploy to Vercel)
+│   ├── src/                  # Source code
+│   │   ├── components/       # React components
+│   │   ├── contexts/         # React contexts
+│   │   ├── data/            # Mock data
+│   │   ├── hooks/           # Custom hooks
+│   │   ├── i18n/            # Internationalization
+│   │   ├── services/        # API services
+│   │   ├── types/           # TypeScript types
+│   │   ├── App.tsx          # Main app component
+│   │   ├── main.tsx         # Entry point
+│   │   └── types.ts         # Type definitions
+│   ├── public/              # Static assets
+│   ├── package.json         # Frontend dependencies
+│   ├── vercel.json          # Vercel deployment config
+│   ├── vite.config.ts       # Vite configuration
+│   ├── .env.example         # Frontend environment variables template
+│   └── tsconfig.json        # TypeScript configuration
 │
-├── backend/           # Express.js API (deploy to Render)
-│   ├── src/           # API entry point, routes, middleware, services, models
-│   ├── package.json   # Backend dependencies
-│   └── .env.example   # Backend environment variables
+├── backend/                 # Express.js API (deploy to Render)
+│   ├── src/                 # Source code
+│   │   ├── index.ts         # API entry point
+│   │   └── server/          # Server modules
+│   │       ├── db.ts        # Database connection
+│   │       ├── seed.ts      # Database seeding
+│   │       ├── middleware/  # Express middleware
+│   │       ├── models/      # Mongoose models
+│   │       ├── routes/      # API routes
+│   │       ├── services/    # Business logic
+│   │       ├── validators/  # Request validation
+│   │       └── websocket/   # WebSocket handlers
+│   ├── package.json         # Backend dependencies
+│   ├── .env.example         # Backend environment variables template
+│   └── tsconfig.json        # TypeScript configuration
 │
-├── render.yaml        # Render deployment blueprint
-└── README.md          # This file
-```
+├── .github/                 # GitHub configuration
+│   └── workflows/           # CI/CD workflows
+│       ├── ci.yml           # Continuous integration
+│       └── deploy.yml       # Deployment automation
+│
+├── render.yaml              # Render deployment blueprint
+├── DEPLOYMENT.md            # Detailed deployment guide
+├── GITHUB_SECRETS.md        # GitHub secrets configuration
+├── phases.md                # Development phases roadmap
+├── README.md                # This file
+└── package.json             # Root workspace configuration
 
 ## Prerequisites
 
-- Node.js 20+ 
+- Node.js 20+
 - npm or yarn
-- MongoDB 7 (locally, through Docker, or MongoDB Atlas)
+- MongoDB Atlas account (for production) or local MongoDB (for development)
 
-## Installation
+## Quick Start (Local Development)
 
-### Frontend Setup
+### 1. Clone and Install
 
-1. Navigate to the frontend directory:
+```bash
+# Clone the repository
+git clone https://github.com/your-username/genmedi.git
+cd genmedi
+
+# Install root dependencies
+npm install
+
+# Install frontend dependencies
+cd frontend
+npm install
+
+# Install backend dependencies
+cd ../backend
+npm install
+```
+
+### 2. Configure Environment Variables
+
+**Frontend:**
 ```bash
 cd frontend
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create environment file:
-```bash
 copy .env.example .env
 ```
 
-4. Configure environment variables in `.env`:
+Edit `frontend/.env`:
 ```
 VITE_API_URL=http://localhost:3000
+VITE_WS_URL=ws://localhost:3000/ws/tracking
 ```
 
-### Backend Setup
-
-1. Navigate to the backend directory:
+**Backend:**
 ```bash
 cd backend
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create environment file:
-```bash
 copy .env.example .env
 ```
 
-4. Configure environment variables in `.env`:
+Edit `backend/.env`:
 ```
 GEMINI_API_KEY="your-gemini-api-key"
 APP_URL="http://localhost:3000"
@@ -81,36 +141,49 @@ RAZORPAY_KEY_ID="your-razorpay-key-id"
 RAZORPAY_KEY_SECRET="your-razorpay-key-secret"
 ```
 
-MongoDB runs separately. Start a local MongoDB service, or use `docker compose up -d mongo` from the project root.
+### 3. Start MongoDB
 
-## Running the Application
+**Option A: Local MongoDB**
+```bash
+# Start MongoDB service (if installed locally)
+mongod
+```
 
-### Option 1: Run Frontend and Backend Separately
+**Option B: MongoDB Atlas**
+1. Create a free MongoDB Atlas account
+2. Create a cluster and get connection string
+3. Update `DATABASE_URL` in `backend/.env` with your Atlas connection string
 
-**Terminal 1 - Start Backend:**
+### 4. Run the Application
+
+**Option 1: Run Frontend and Backend Separately**
+
+Terminal 1 - Start Backend:
 ```bash
 cd backend
 npm run dev
 ```
-Backend will run on http://localhost:3000
+Backend runs on http://localhost:3000
 
-**Terminal 2 - Start Frontend:**
+Terminal 2 - Start Frontend:
 ```bash
 cd frontend
 npm run dev
 ```
-Frontend will run on http://localhost:5173
+Frontend runs on http://localhost:5173
 
-### Option 2: Run Both Together (Using Concurrently)
+**Option 2: Run Both Together**
 
-1. Install the root workspace helper:
-```bash
-npm install
-```
-
-2. Run both:
+From project root:
 ```bash
 npm run dev
+```
+
+### 5. Seed Database (Optional)
+
+```bash
+cd backend
+npm run seed
 ```
 
 ## API Endpoints
@@ -191,50 +264,70 @@ npm run start         # Start production server
 npm run lint          # Run TypeScript check
 ```
 
-## Production Deployment
+## 🚀 Production Deployment
 
-### Docker Deployment
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
-Build and run with Docker Compose:
-```bash
-docker-compose up -d
-```
+### Quick Deployment Summary
+
+1. **MongoDB Atlas Setup**
+   - Create free MongoDB Atlas account
+   - Create cluster and configure database access
+   - Get connection string
+
+2. **Deploy Backend to Render**
+   - Connect GitHub repository to Render
+   - Configure environment variables
+   - Deploy automatically via `render.yaml`
+
+3. **Deploy Frontend to Vercel**
+   - Connect GitHub repository to Vercel
+   - Configure environment variables
+   - Deploy automatically via `vercel.json`
+
+4. **Configure GitHub Secrets** (Optional - for CI/CD)
+   - See [GITHUB_SECRETS.md](GITHUB_SECRETS.md)
 
 ### Manual Deployment
 
-1. Build frontend:
+**Frontend:**
 ```bash
 cd frontend
 npm run build
+# Deploy dist/ folder to Vercel or any static hosting
 ```
 
-2. Build backend:
+**Backend:**
 ```bash
 cd backend
 npm run build
-```
-
-3. Start backend server:
-```bash
-cd backend
 npm run start
+# Deploy to Render or any Node.js hosting
 ```
 
-4. Serve frontend static files with nginx or similar
+**Docker Deployment:**
+```bash
+docker-compose up -d
+```
 
 ## Environment Variables
 
 ### Frontend (.env)
 - `VITE_API_URL` - Backend API URL (default: http://localhost:3000)
+- `VITE_WS_URL` - WebSocket URL for live tracking (optional)
 
 ### Backend (.env)
 - `GEMINI_API_KEY` - Gemini AI API key
 - `APP_URL` - Application URL
-- `DATABASE_URL` - Database connection string
-- `JWT_SECRET` - JWT secret key
-- `JWT_REFRESH_SECRET` - JWT refresh secret
-- `RAZORPAY_KEY_ID` - Razorpay key ID
-- `RAZORPAY_KEY_SECRET` - Razorpay key secret
+- `FRONTEND_URL` - Frontend URL for CORS
+- `PORT` - Server port (default: 3000)
+- `DATABASE_URL` - MongoDB connection string
+- `JWT_SECRET` - JWT secret key for access tokens
+- `JWT_REFRESH_SECRET` - JWT secret key for refresh tokens
+- `RAZORPAY_KEY_ID` - Razorpay key ID (optional)
+- `RAZORPAY_KEY_SECRET` - Razorpay key secret (optional)
+
+See `.env.example` files in both directories for detailed templates.
 
 ## Troubleshooting
 
@@ -242,15 +335,81 @@ npm run start
 - Ensure backend is running on port 3000
 - Check `VITE_API_URL` in frontend/.env
 - Check browser console for CORS errors
+- Verify backend CORS settings include your frontend URL
 
 ### Backend not starting
 - Ensure all dependencies are installed
 - Check database connection string in .env
 - Check port 3000 is not in use
+- Verify MongoDB is accessible
 
 ### Database errors
-- Confirm MongoDB is running
+- Confirm MongoDB is running (local or Atlas)
 - Check `DATABASE_URL` in backend/.env
+- Verify MongoDB Atlas IP whitelist includes your IP
+- Check database user credentials
+
+### Deployment Issues
+- Check platform-specific logs (Render, Vercel)
+- Verify all environment variables are set correctly
+- Ensure secrets are not committed to repository
+- Review [DEPLOYMENT.md](DEPLOYMENT.md) for detailed troubleshooting
+
+## Documentation
+
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide for Render, Vercel, and MongoDB Atlas
+- [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment checklist
+- [LOCAL_SETUP.md](LOCAL_SETUP.md) - Local development setup guide
+- [GITHUB_SECRETS.md](GITHUB_SECRETS.md) - GitHub secrets configuration for CI/CD
+- [phases.md](phases.md) - Development phases roadmap and milestones
+- [decisions.md](decisions.md) - Architecture and design decisions
+- [rules.md](rules.md) - Development rules and guidelines
+- [memory.md](memory.md) - Project memory and context
+
+## Development Workflow
+
+### Git Workflow
+
+1. Create a new branch for features:
+```bash
+git checkout -b feature/your-feature-name
+```
+
+2. Make changes and commit:
+```bash
+git add .
+git commit -m "Add your feature"
+```
+
+3. Push and create pull request:
+```bash
+git push origin feature/your-feature-name
+```
+
+### CI/CD
+
+- **CI**: Automatically runs on push/PR (linting, building)
+- **CD**: Automatically deploys to Render/Vercel on main branch push
+
+## Architecture Highlights
+
+### Backend (Express.js + MongoDB)
+- RESTful API with TypeScript
+- MongoDB with Mongoose ODM
+- JWT authentication with refresh tokens
+- WebSocket support for real-time tracking
+- Comprehensive middleware (auth, validation, audit logging)
+- Modular route structure
+- Database seeding for development
+
+### Frontend (React + Vite)
+- React 19 with TypeScript
+- Vite for fast development and building
+- Tailwind CSS for styling
+- Context API for state management
+- Internationalization (i18n) support
+- PWA capabilities
+- Optimized for production deployment
 
 ## License
 
@@ -258,4 +417,7 @@ Proprietary - All rights reserved
 
 ## Support
 
-For support, contact the development team.
+For support:
+- Check documentation files in project root
+- Review deployment logs on respective platforms
+- Check GitHub Issues for known problems

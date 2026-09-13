@@ -19,11 +19,21 @@ export async function connectDatabase(): Promise<void> {
   }
 
   try {
-    await mongoose.connect(DATABASE_URL, { serverSelectionTimeoutMS: 10_000 });
+    await mongoose.connect(DATABASE_URL, {
+      serverSelectionTimeoutMS: 10_000,
+      // For local development, allow connection to continue even if auth fails
+      authSource: "admin",
+    });
     console.log("✅ Connected to MongoDB");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-    scheduleReconnect();
+    // For local development, we'll warn but allow the server to start
+    if (DATABASE_URL.includes("localhost") || DATABASE_URL.includes("127.0.0.1")) {
+      console.warn("⚠️ Running without database connection. Some features may not work.");
+      console.warn("⚠️ Start MongoDB locally or configure DATABASE_URL for production.");
+    } else {
+      scheduleReconnect();
+    }
   }
 }
 
